@@ -34,8 +34,7 @@ try:
     from futu.common.constant import KLType
 except ImportError as e:
     raise SystemExit(
-        "请先安装依赖：pip install futu-api pandas\n"
-        f"导入失败：{e}"
+        "请先安装依赖：pip install futu-api pandas\n" f"导入失败：{e}"
     ) from e
 
 
@@ -81,7 +80,9 @@ def fetch_daily_kline(
 
     out = pd.concat(frames, ignore_index=True)
     if "time_key" in out.columns:
-        out = out.sort_values("time_key").drop_duplicates(subset=["time_key"], keep="last")
+        out = out.sort_values("time_key").drop_duplicates(
+            subset=["time_key"], keep="last"
+        )
     return out.reset_index(drop=True)
 
 
@@ -118,16 +119,18 @@ def _trade_date_from_row(time_key: object) -> date:
     return py_dt.date()
 
 
-def dataframe_to_trade_models(
-    df: pd.DataFrame, fallback_code: str
-) -> list[Any]:
+def dataframe_to_trade_models(df: pd.DataFrame, fallback_code: str) -> list[Any]:
     """富途日 K DataFrame -> TradeStockDailyModel 实例列表（延后 import 避免未装依赖时影响 CSV 导出）。"""
     from app.models.TradeStockDailyModel import TradeStockDailyModel
 
     rows: list[TradeStockDailyModel] = []
     for rec in df.to_dict("records"):
         code = rec.get("code")
-        stock_code = (str(code).strip() if code is not None and str(code).strip() else fallback_code)
+        stock_code = (
+            str(code).strip()
+            if code is not None and str(code).strip()
+            else fallback_code
+        )
         rows.append(
             TradeStockDailyModel(
                 stock_code=stock_code,
@@ -183,8 +186,12 @@ def main() -> None:
         default=None,
         help="指定自然年（设置后 start/end 为该年 1/1 至今天与该年末日的较早者，优先级高于 --start/--end）",
     )
-    parser.add_argument("--start", type=str, default=default_start, help="开始日期 YYYY-MM-DD")
-    parser.add_argument("--end", type=str, default=default_end, help="结束日期 YYYY-MM-DD")
+    parser.add_argument(
+        "--start", type=str, default=default_start, help="开始日期 YYYY-MM-DD"
+    )
+    parser.add_argument(
+        "--end", type=str, default=default_end, help="结束日期 YYYY-MM-DD"
+    )
     parser.add_argument("--host", type=str, default="127.0.0.1", help="OpenD 地址")
     parser.add_argument("--port", type=int, default=11111, help="OpenD 端口")
     parser.add_argument(
@@ -213,18 +220,11 @@ def main() -> None:
     df = fetch_daily_kline(args.code, start, end, host=args.host, port=args.port)
 
     if df.empty:
-        print("未返回任何数据（请检查代码权限、OpenD 是否登录、日期区间内是否有交易日）。")
+        print(
+            "未返回任何数据（请检查代码权限、OpenD 是否登录、日期区间内是否有交易日）。"
+        )
         return
 
-    out_path = args.output
-    if not out_path:
-        safe_code = args.code.replace(".", "_")
-        out_dir = Path(__file__).resolve().parent / "data"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = str(out_dir / f"{safe_code}_daily_{start}_{end}.csv")
-
-    df.to_csv(out_path, index=False, encoding="utf-8-sig")
-    print(f"共 {len(df)} 条，已保存：{out_path}")
     print(df.head(3).to_string())
     print("…")
 
